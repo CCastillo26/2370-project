@@ -49,7 +49,7 @@ params <- list(
 # 5-fold cross validation on subsample
 set.seed(123)
 
-max_cv_n <- 100000 # cap CV sample size
+max_cv_n <- 100000 # Cap CV sample size for speed
 n_full <- length(y)
 
 if (n_full > max_cv_n) {
@@ -118,7 +118,7 @@ if (n > max_n) {
 
 idx <- sample(n) 
 
-train_end <- floor(0.8 * n)   # First 80% -> train, last 20% -> test
+train_end <- floor(0.8 * n) # First 80% -> train, last 20% -> test
 
 train_idx <- idx[1:train_end]
 test_idx <- idx[(train_end + 1):n]
@@ -205,4 +205,4 @@ precision_sp
 recall_sp
 f1_sp
 
-saveRDS(bst, "ollape_xgb_model.rds")
+saveRDS(bst, "ollape_xgb_model.rds") # For use in Week 3
