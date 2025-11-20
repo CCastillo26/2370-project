@@ -24,7 +24,7 @@ dtm_raw <- rasterize_terrain(raw_pc, res = 0.5, algorithm = knnidw())
 
 writeRaster(dtm_raw, "dtm_raw_0p5m.tif", overwrite = TRUE)
 
-# XGBoost-cleaned DTM
+# Create XGBoost-cleaned DTM
 pc_clean <- filter_poi(raw_pc, pred_xgb == 0)
 
 dtm_xgb <- rasterize_terrain(pc_clean, res = 0.5, algorithm = knnidw())
