@@ -63,34 +63,28 @@ rownames = FALSE
 
 Column {data-width=650}
 -----------------------------------------------------------------------
-
-
-
-# Chart A
-
+### Ollape view
 ```{r}
-selectInput(
-inputId = "method",
-label = "Preprocessing method",
-choices = c("Raw" = "raw",
-"RF (3DMASC)" = "rf",
-"XGBoost" = "xgb"),
-selected = "xgb"
-)
-```
-
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Chart B
-
-```{r}
-
-```
-
-### Chart C
-
-```{r}
-
+renderImage({
+  
+  method <- input$method
+  layer  <- input$layer
+  
+  # Build filename from method, layer
+  fname <- switch(
+    layer,
+    dtm = paste0("Outputs/dtm_", method, "_0p5m.png"),
+    chm = paste0("Outputs/chm_", method, "_0p5m.png"),
+    vis = paste0("Outputs/vis_", method, "_central_cluster_0p5m.png")
+  )
+  
+  list(
+    src = fname,
+    contentType = "image/png",
+    width = "100%",
+    alt  = paste("Layer:", layer, "Method:", method)
+  )
+  
+}, deleteFile = FALSE)
 ```
 
