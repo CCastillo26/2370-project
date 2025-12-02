@@ -9,15 +9,23 @@ runtime: shiny
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
+library(tidyverse)
 ```
 
-Column {data-width=650}
+Column {data-width=350}
 -----------------------------------------------------------------------
 
 ### Chart A
 
 ```{r}
-
+selectInput(
+inputId = "method",
+label = "Preprocessing method",
+choices = c("Raw" = "raw",
+"RF (3DMASC)" = "rf",
+"XGBoost" = "xgb"),
+selected = "xgb"
+)
 ```
 
 Column {data-width=350}
