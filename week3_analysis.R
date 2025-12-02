@@ -59,32 +59,34 @@ writeRaster(chm_xgb, "chm_xgb_0p5m.tif", overwrite = TRUE)
 # x1 - central cluster, x2 - southern house/road, x3 - central outskirts
 vp_df <- data.frame(
   id = c("central_cluster", "south_house", "east_outskirts"),
-  x  = c(-69.5182,  -21.9884,   -7.55639),
-  y  = c(285.713,    25.018,    306.499)
+  x = c(-69.5182, -21.9884, -7.55639), # Enter coordinates manually
+  y = c(285.713, 25.018, 306.499)
 )
-
-vp_multi <- vect(vp_df, geom = c("x", "y"), crs = crs(dtm_raw))
 
 observer_height <- 1.5  # Meters above ground
 
 for (i in seq_len(nrow(vp_df))) {
   this_id <- vp_df$id[i]
+  this_xy <- c(vp_df$x[i], vp_df$y[i]) # Numeric (x, y)
   
-  vs_raw <- viewshed(dtm_raw, vp_multi[i, ])
+  # Raw
+  vs_raw <- terra::viewshed(dtm_raw, this_xy, observer = observer_height)
   writeRaster(
     vs_raw,
     paste0("vis_raw_", this_id, "_0p5m.tif"),
     overwrite = TRUE
   )
   
-  vs_rf <- viewshed(dtm_rf, vp_multi[i, ])
+  # RF / 3DMASC
+  vs_rf <- terra::viewshed(dtm_rf, this_xy, observer = observer_height)
   writeRaster(
     vs_rf,
     paste0("vis_rf_", this_id, "_0p5m.tif"),
     overwrite = TRUE
   )
   
-  vs_xgb <- viewshed(dtm_xgb, vp_multi[i, ])
+  # XGB
+  vs_xgb <- terra::viewshed(dtm_xgb, this_xy, observer = observer_height)
   writeRaster(
     vs_xgb,
     paste0("vis_xgb_", this_id, "_0p5m.tif"),
