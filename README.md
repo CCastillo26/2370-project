@@ -20,5 +20,20 @@ This dashboard is the primary view for comparing preprocessing pipelines and the
   * In R Studio, run `week2_analysis.R` and `week3_analysis`.
   * Then, open `week4_dashboard.Rmd` and click **Knit**.
   * This will create an HTML file. Open that file in your browser.
+* **2. Choose a preprocessing method**
+  * Use the **Preprocessing Method** dropdown to select:
+    * *Raw*
+    * *RF (Abate et al., 2019)*
+    * *XGBoost*
+* **3. Choose a layer to display**
+Under **Display Layer**, three options are available:
+  * **Digital Surface Model (DSM)**
+    * *Digital surface models are elevation surfaces that include ground, vegetation, and structures.*
+  * **Digital Terrain Model (DTM)**
+    * *Digital terrain models are bare-earth surfaces with vegetation and buildings removed.*
+  * **Canopy Height Model (CHM)**
+    * *Canopy height models are calculated as DSM minus DTM and highlight vegetation height above the ground.*
+* **4. Interpret the map**
+* **5. Read the metrics table**
 
 
