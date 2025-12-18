@@ -7,6 +7,30 @@ output:
 runtime: shiny
 ---
 
+<!-- CSS to widen sidebar label text so descriptions wrap less -->
+
+```{r sidebar-css, echo=FALSE, results='asis'}
+cat("
+
+<style>
+.section.sidebar .shiny-input-container { width: 100% !important; }
+
+.section.sidebar .radio label,
+.section.sidebar .checkbox label {
+  display: block;
+  width: 100%;
+}
+
+.section.sidebar .radio,
+.section.sidebar .checkbox {
+  margin-left: 0px;
+}
+</style>
+
+")
+```
+
+
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(shiny)
@@ -20,75 +44,121 @@ library(plotly)
 
 Column {data-width=350}
 -----------------------------------------------------------------------
-### Controls {data-height=520}
+### Controls {data-height=750}
 ```{r}
 tags$div(
   style = "max-height: 65vh; overflow-y: auto; padding-right: 10px;",
-  
+
   selectInput(
     inputId = "method",
-    label = "Preprocessing Method",
-    choices = c("Raw" = "raw", "Random Forest (Abate et al., 2019)" = "rf",
-                "XGBoost" = "xgb"),
+    label   = "Preprocessing Method",
+    choices = c(
+      "Raw" = "raw",
+      "Random Forest (Abate et al., 2019)" = "rf",
+      "XGBoost" = "xgb"
+    ),
     selected = "xgb"
   ),
-  
+
   radioButtons(
-    inputId  = "layer",
-    label = "Display Layer",
+    inputId     = "layer",
+    label       = "Display Layer",
     choiceNames = list(
       tags$div(
         tags$div(tags$strong("Digital Surface Model (DSM)")),
         tags$div(
-          style = "margin-left: 20px; font-size: 0.9em; color: #555;",
+          style = "margin-left: 30px; font-size: 0.9em; color: #555;",
           tags$em("Digital surface models are elevation surfaces that include ground, vegetation, and structures.")
         )
       ),
       tags$div(
         tags$div(tags$strong("Digital Terrain Model (DTM)")),
         tags$div(
-          style = "margin-left: 20px; font-size: 0.9em; color: #555;",
-          tags$em("Digital terrain models are interpolated after removing vegetation points (structures may remain).") # EDIT (recommended)
+          style = "margin-left: 30px; font-size: 0.9em; color: #555;",
+          tags$em("Digital terrain models are bare-earth surfaces with vegetation and buildings removed.")
         )
       ),
       tags$div(
         tags$div(tags$strong("Canopy Height Model (CHM)")),
         tags$div(
-          style = "margin-left: 20px; font-size: 0.9em; color: #555;",
+          style = "margin-left: 30px; font-size: 0.9em; color: #555;",
           tags$em("Canopy height models are calculated as DSM minus DTM and highlight vegetation height above the ground.")
         )
       )
     ),
     choiceValues = c("dsm", "dtm", "chm"),
-    selected = "chm"
+    selected     = "chm"
   ),
-  
+
+  # --- Optional modifications (clean, like Display Layer) ---
+tags$div(
+  style = "margin-top: 18px;",
+
+  tags$div(tags$strong("Optional modifications")),
+  tags$div(style = "height: 8px;"),
+
+  # Checkboxes rendered like your Display Layer list
   conditionalPanel(
-  condition = "input.method == 'xgb'",
-  checkboxInput(
-    inputId = "show_conf",
-    label   = "Show confidence (red/yellow/green)",
-    value   = FALSE
+    condition = "input.method == 'xgb'",
+
+    checkboxGroupInput(
+      inputId = "mods",
+      label   = NULL,
+      choiceNames = list(
+        tags$div(
+          tags$div(tags$strong("XGBoost confidence overlay")),
+          tags$div(
+            style = "margin-left: 30px; font-size: 0.9em; color: #555;",
+            tags$em("tags$em(HTML("Confidence is binned by mean grid confidence, where red &lt; 0.60, yellow <span style='white-space:nowrap;'>0.60–0.80</span>, green ≥ 0.80."))
+          )
+        )
+      ),
+      choiceValues = c("conf"),
+      selected = character(0)
+    )
+  ),
+
+  # Viewshed toggle (available for all methods)
+  checkboxGroupInput(
+    inputId = "mods_vis",
+    label   = NULL,
+    choiceNames = list(
+      tags$div(
+        tags$div(tags$strong("Viewshed overlay")),
+        tags$div(
+          style = "margin-left: 30px; font-size: 0.9em; color: #555;",
+          tags$em("Overlays the viewshed raster (visible = 1) for the selected preprocessing method and viewpoint.")
+        )
+      )
+    ),
+    choiceValues = c("vis"),
+    selected = character(0)
+  ),
+
+  # Viewpoint appears only if viewshed is enabled
+  conditionalPanel(
+    condition = "input.mods_vis.includes('vis')",
+    tags$div(
+      style = "margin-top: 10px;",
+      tags$div(tags$strong("Visibility viewpoint")),
+      tags$div(
+        style = "margin-left: 30px; font-size: 0.9em; color: #555;",
+        tags$em("Select an observer location used to compute viewsheds for Raw / RF / XGBoost surfaces.")
+      ),
+      selectizeInput(
+        inputId  = "vp",
+        label    = NULL,
+        choices  = c(
+          "Central cluster"  = "central_cluster",
+          "South house/road" = "south_house_road",
+          "East outskirts"   = "east_outskirts"
+        ),
+        selected = "central_cluster",
+        options  = list(dropdownParent = "body")
+      )
+    )
   )
-),
-  
-  selectizeInput(
-inputId = "vp",
-label = "Viewpoint (for visibility overlay)",
-choices = c(
-"Central cluster" = "central_cluster",
-"South house/road" = "south_house_road",
-"East outskirts" = "east_outskirts"
-),
-selected = "central_cluster",
-options = list(dropdownParent = "body")
-),
-  
-  checkboxInput(
-    inputId = "show_vis",
-    label   = "Show viewshed (visible = 1)",
-    value   = FALSE
-  )
+)
 )
 ```
 
