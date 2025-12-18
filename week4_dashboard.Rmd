@@ -13,71 +13,83 @@ library(shiny)
 library(tidyverse)
 library(DT)
 library(terra)
+library(raster)
+library(plotly)
 ```
 
 
 Column {data-width=350}
 -----------------------------------------------------------------------
-### Controls
+### Controls {data-height=520}
 ```{r}
-selectInput(
-inputId = "method",
-label   = "Preprocessing Method",
-choices = c("Raw" = "raw",
-"Random Forest (Abate et al., 2019)" = "rf",
-"XGBoost" = "xgb"),
-selected = "xgb"
-)
-
-radioButtons(
-  inputId     = "layer",
-  label       = "Display Layer",
-  choiceNames = list(
-    # DSM option: bold title, italic definition
-    tags$div(
-      tags$div(tags$strong("Digital Surface Model (DSM)")),
-      tags$div(
-        style = "margin-left: 20px; font-size: 0.9em; color: #555;",
-        tags$em(
-          "Digital surface models are elevation surfaces that include ground, vegetation, and structures."
-        )
-      )
-    ),
-    # DTM option
-    tags$div(
-      tags$div(tags$strong("Digital Terrain Model (DTM)")),
-      tags$div(
-        style = "margin-left: 20px; font-size: 0.9em; color: #555;",
-        tags$em(
-          "Digital terrain models are bare-earth surfaces with vegetation and buildings removed."
-        )
-      )
-    ),
-    # CHM option
-    tags$div(
-      tags$div(tags$strong("Canopy Height Model (CHM)")),
-      tags$div(
-        style = "margin-left: 20px; font-size: 0.9em; color: #555;",
-        tags$em(
-          "Canopy height models are calculated as DSM minus DTM and highlight vegetation height above the ground."
-        )
-      )
-    )
+tags$div(
+  style = "max-height: 65vh; overflow-y: auto; padding-right: 10px;",
+  
+  selectInput(
+    inputId = "method",
+    label = "Preprocessing Method",
+    choices = c("Raw" = "raw", "Random Forest (Abate et al., 2019)" = "rf",
+                "XGBoost" = "xgb"),
+    selected = "xgb"
   ),
-  choiceValues = c("dsm", "dtm", "chm"),
-  selected     = "chm"
+  
+  radioButtons(
+    inputId  = "layer",
+    label = "Display Layer",
+    choiceNames = list(
+      tags$div(
+        tags$div(tags$strong("Digital Surface Model (DSM)")),
+        tags$div(
+          style = "margin-left: 20px; font-size: 0.9em; color: #555;",
+          tags$em("Digital surface models are elevation surfaces that include ground, vegetation, and structures.")
+        )
+      ),
+      tags$div(
+        tags$div(tags$strong("Digital Terrain Model (DTM)")),
+        tags$div(
+          style = "margin-left: 20px; font-size: 0.9em; color: #555;",
+          tags$em("Digital terrain models are interpolated after removing vegetation points (structures may remain).") # EDIT (recommended)
+        )
+      ),
+      tags$div(
+        tags$div(tags$strong("Canopy Height Model (CHM)")),
+        tags$div(
+          style = "margin-left: 20px; font-size: 0.9em; color: #555;",
+          tags$em("Canopy height models are calculated as DSM minus DTM and highlight vegetation height above the ground.")
+        )
+      )
+    ),
+    choiceValues = c("dsm", "dtm", "chm"),
+    selected = "chm"
+  ),
+  
+  conditionalPanel(
+  condition = "input.method == 'xgb'",
+  checkboxInput(
+    inputId = "show_conf",
+    label   = "Show confidence (red/yellow/green)",
+    value   = FALSE
+  )
+),
+  
+  selectizeInput(
+inputId = "vp",
+label = "Viewpoint (for visibility overlay)",
+choices = c(
+"Central cluster" = "central_cluster",
+"South house/road" = "south_house_road",
+"East outskirts" = "east_outskirts"
+),
+selected = "central_cluster",
+options = list(dropdownParent = "body")
+),
+  
+  checkboxInput(
+    inputId = "show_vis",
+    label   = "Show viewshed (visible = 1)",
+    value   = FALSE
+  )
 )
-
-# Visibility networks, confidence intervals, overlays (hover)
-
-# radioButtons(
-# inputId = "layer",
-# label   = "Display Layer",
-# choices = c("Digital Surface Model (DSM)" = "dsm",
-# "Digital Terrain Model (DTM)" = "dtm",
-# "Canopy Height Model (CHM)" = "chm"),
-# selected = "chm"
-# )
 ```
 
 
@@ -108,23 +120,44 @@ Column {data-width=650}
 ### Ollape
 ```{r}
 renderPlot({
+req(input$method, input$layer)
+
+method <- as.character(input$method)[1]  # raw / rf / xgb
+layer  <- as.character(input$layer)[1]   # dsm / dtm / chm
+
+fname <- file.path("Outputs", paste0(layer, "_", method, "_0p5m.tif"))
+validate(need(file.exists(fname), paste("Missing raster:", fname)))
+
+r <- terra::rast(fname)
+terra::plot(r, main = paste(toupper(layer), "-", toupper(method)))
+
+# Optional overlay
+if (isTRUE(input$show_conf) && method == "xgb") {
+  conf_name <- file.path("Outputs", "confclass_xgb_0p5m.tif")
   
-  method <- input$method
-  layer  <- input$layer
+if (file.exists(conf_name)) {
+  conf <- terra::rast(conf_name)
+  terra::plot(conf,
+              col = c("red", "yellow", "green"),
+              legend = FALSE,
+              alpha = 0.35,
+              add = TRUE)
+}
+}
+
+if (isTRUE(input$show_vis)) {
+  req(input$vp)
+  vp <- as.character(input$vp)[1]
+  vis_name <- file.path("Outputs", paste0("vis_", method, "_", vp, "_0p5m.tif"))
   
-  # Build filename from method, layer
-  fname <- switch(
-    layer,
-    dsm = paste0("Outputs/dsm_", method, "_0p5m.tif"),
-    dtm = paste0("Outputs/dtm_", method, "_0p5m.tif"),
-    chm = paste0("Outputs/chm_", method, "_0p5m.tif")
-  )
-  
-  r <- terra::rast(fname)
-  terra::plot(
-    r,
-    main = paste(toupper(layer), "-", toupper(method))
-  )
+if (file.exists(vis_name)) {
+  vis <- terra::rast(vis_name)
+  terra::plot(vis,
+              col = c(NA, "black"),  # 0 = transparent, 1 = black
+              legend = FALSE,
+              alpha = 0.35,
+              add = TRUE)
+  }
+}
 })
 ```
-
