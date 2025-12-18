@@ -1,3 +1,5 @@
+source("week2_analysis.R")
+
 library(lidR)
 library(terra)
 library(xgboost)
