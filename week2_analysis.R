@@ -204,9 +204,9 @@ recall_sp
 f1_sp
 
 saveRDS(bst, "ollape_xgb_model.rds")
+saveRDS(bst_sp, "ollape_xgb_model_tile.rds")
 
-site_pc <- readLAS("/Users/charlycastillo/Documents/GitHub/2370-project/
-                   ollape_nomanual.las")
+site_pc <- readLAS("/Users/charlycastillo/Documents/GitHub/2370-project/ollape_nomanual.las")
 
 site_df <- as.data.frame(site_pc@data)
 
@@ -220,12 +220,10 @@ site_pc@data$pred_xgb <- pred_lab
 site_pc@data$prob_xgb <- p_site
 
 writeLAS(site_pc,
-         "/Users/charlycastillo/Documents/GitHub/2370-project/
-         ollape_xgb_classified.las")
+         "/Users/charlycastillo/Documents/GitHub/2370-project/ollape_xgb_classified.las")
 
 site_noveg <- filter_poi(site_pc, pred_xgb == 0)
 
 writeLAS(site_noveg,
-         "/Users/charlycastillo/Documents/GitHub/2370-project/
-         ollape_xgb_noveg.las")
+         "/Users/charlycastillo/Documents/GitHub/2370-project/ollape_xgb_noveg.las")
 
