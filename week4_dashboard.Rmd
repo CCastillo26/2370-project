@@ -90,75 +90,76 @@ tags$div(
     selected     = "chm"
   ),
 
-  # --- Optional modifications (clean, like Display Layer) ---
-tags$div(
-  style = "margin-top: 18px;",
+  # --- Optional modifications ---
+  tags$div(
+    style = "margin-top: 18px;",
 
-  tags$div(tags$strong("Optional modifications")),
-  tags$div(style = "height: 8px;"),
+    tags$div(tags$strong("Optional modifications")),
+    tags$div(style = "height: 8px;"),
 
-  # Checkboxes rendered like your Display Layer list
-  conditionalPanel(
-    condition = "input.method == 'xgb'",
+    # Confidence checkbox (only for XGBoost)
+    conditionalPanel(
+      condition = "input.method == 'xgb'",
+      checkboxGroupInput(
+        inputId = "mods",
+        label   = NULL,
+        choiceNames = list(
+          tags$div(
+            tags$div(tags$strong("XGBoost confidence overlay")),
+            tags$div(
+              style = "margin-left: 30px; font-size: 0.9em; color: #555;",
+              tags$em(HTML(
+                "Confidence bins: red &lt; 0.60, yellow <span style='white-space:nowrap;'>0.60–0.80</span>, green ≥ 0.80."
+              ))
+            )
+          )
+        ),
+        choiceValues = c("conf"),
+        selected = character(0)
+      )
+    ),
 
+    # Viewshed checkbox (all methods)
     checkboxGroupInput(
-      inputId = "mods",
+      inputId = "mods_vis",
       label   = NULL,
       choiceNames = list(
         tags$div(
-          tags$div(tags$strong("XGBoost confidence overlay")),
+          tags$div(tags$strong("Viewshed overlay")),
           tags$div(
             style = "margin-left: 30px; font-size: 0.9em; color: #555;",
-            tags$em("tags$em(HTML("Confidence is binned by mean grid confidence, where red &lt; 0.60, yellow <span style='white-space:nowrap;'>0.60–0.80</span>, green ≥ 0.80."))
+            tags$em("Overlays the viewshed raster (visible = 1) for the selected preprocessing method and viewpoint.")
           )
         )
       ),
-      choiceValues = c("conf"),
+      choiceValues = c("vis"),
       selected = character(0)
-    )
-  ),
+    ),
 
-  # Viewshed toggle (available for all methods)
-  checkboxGroupInput(
-    inputId = "mods_vis",
-    label   = NULL,
-    choiceNames = list(
+    # Viewpoint dropdown only if viewshed is enabled
+    conditionalPanel(
+      condition = "input.mods_vis && input.mods_vis.indexOf('vis') >= 0",
       tags$div(
-        tags$div(tags$strong("Viewshed overlay")),
+        style = "margin-top: 10px;",
+        tags$div(tags$strong("Visibility viewpoint")),
         tags$div(
           style = "margin-left: 30px; font-size: 0.9em; color: #555;",
-          tags$em("Overlays the viewshed raster (visible = 1) for the selected preprocessing method and viewpoint.")
-        )
-      )
-    ),
-    choiceValues = c("vis"),
-    selected = character(0)
-  ),
-
-  # Viewpoint appears only if viewshed is enabled
-  conditionalPanel(
-    condition = "input.mods_vis.includes('vis')",
-    tags$div(
-      style = "margin-top: 10px;",
-      tags$div(tags$strong("Visibility viewpoint")),
-      tags$div(
-        style = "margin-left: 30px; font-size: 0.9em; color: #555;",
-        tags$em("Select an observer location used to compute viewsheds for Raw / RF / XGBoost surfaces.")
-      ),
-      selectizeInput(
-        inputId  = "vp",
-        label    = NULL,
-        choices  = c(
-          "Central cluster"  = "central_cluster",
-          "South house/road" = "south_house_road",
-          "East outskirts"   = "east_outskirts"
+          tags$em("Select an observer location used to compute viewsheds for Raw / RF / XGBoost surfaces.")
         ),
-        selected = "central_cluster",
-        options  = list(dropdownParent = "body")
+        selectizeInput(
+          inputId  = "vp",
+          label    = NULL,
+          choices  = c(
+            "Central cluster"  = "central_cluster",
+            "South house/road" = "south_house_road",
+            "East outskirts"   = "east_outskirts"
+          ),
+          selected = "central_cluster",
+          options  = list(dropdownParent = "body")
+        )
       )
     )
   )
-)
 )
 ```
 
@@ -190,44 +191,51 @@ Column {data-width=650}
 ### Ollape
 ```{r}
 renderPlot({
-req(input$method, input$layer)
+  req(input$method, input$layer)
 
-method <- as.character(input$method)[1]  # raw / rf / xgb
-layer  <- as.character(input$layer)[1]   # dsm / dtm / chm
+  method <- as.character(input$method)[1]
+  layer  <- as.character(input$layer)[1]
 
-fname <- file.path("Outputs", paste0(layer, "_", method, "_0p5m.tif"))
-validate(need(file.exists(fname), paste("Missing raster:", fname)))
+  fname <- file.path("Outputs", paste0(layer, "_", method, "_0p5m.tif"))
+  validate(need(file.exists(fname), paste("Missing raster:", fname)))
 
-r <- terra::rast(fname)
-terra::plot(r, main = paste(toupper(layer), "-", toupper(method)))
+  r <- terra::rast(fname)
+  terra::plot(r, main = paste(toupper(layer), "-", toupper(method)))
 
-# Optional overlay
-if (isTRUE(input$show_conf) && method == "xgb") {
-  conf_name <- file.path("Outputs", "confclass_xgb_0p5m.tif")
-  
-if (file.exists(conf_name)) {
-  conf <- terra::rast(conf_name)
-  terra::plot(conf,
-              col = c("red", "yellow", "green"),
-              legend = FALSE,
-              alpha = 0.35,
-              add = TRUE)
-}
-}
+  # Optional confidence overlay
+  show_conf <- !is.null(input$mods) && ("conf" %in% input$mods) 
+  if (show_conf && method == "xgb") {  
+    conf_name <- file.path("Outputs", "confclass_xgb_0p5m.tif")
 
-if (isTRUE(input$show_vis)) {
-  req(input$vp)
-  vp <- as.character(input$vp)[1]
-  vis_name <- file.path("Outputs", paste0("vis_", method, "_", vp, "_0p5m.tif"))
-  
-if (file.exists(vis_name)) {
-  vis <- terra::rast(vis_name)
-  terra::plot(vis,
-              col = c(NA, "black"),  # 0 = transparent, 1 = black
-              legend = FALSE,
-              alpha = 0.35,
-              add = TRUE)
+    if (file.exists(conf_name)) {
+      conf <- terra::rast(conf_name)
+      terra::plot(
+        conf,
+        col = c("red", "yellow", "green"),
+        legend = FALSE,
+        alpha = 0.35,
+        add = TRUE
+      )
+    }
   }
-}
+
+  # Optional viewshed overlay
+  show_vis <- !is.null(input$mods_vis) && ("vis" %in% input$mods_vis)
+  if (show_vis) {  
+    req(input$vp)
+    vp <- as.character(input$vp)[1]
+    vis_name <- file.path("Outputs", paste0("vis_", method, "_", vp, "_0p5m.tif"))
+
+    if (file.exists(vis_name)) {
+      vis <- terra::rast(vis_name)
+      terra::plot(
+        vis,
+        col = c(NA, "black"), # 0 = transparent, 1 = black
+        legend = FALSE,
+        alpha = 0.35,
+        add = TRUE
+      )
+    }
+  }
 })
 ```
