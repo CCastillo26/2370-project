@@ -9,9 +9,8 @@ runtime: shiny
 
 <!-- CSS to widen sidebar label text so descriptions wrap less -->
 
-```{r sidebar-css, echo=FALSE, results='asis'}
+```{r sidebar-css, echo = FALSE, results = 'asis'}
 cat("
-
 <style>
 .section.sidebar .shiny-input-container { width: 100% !important; }
 
@@ -19,17 +18,6 @@ cat("
 .section.sidebar .checkbox label {
   display: block;
   width: 100%;
-}
-
-.section.sidebar .radio,
-.section.sidebar .checkbox {
-  margin-left: 0px;
-}
-
-details.defn-inline {
-  display: block;  
-  margin: 0;
-  padding: 0;
 }
 
 details.defn-inline > summary {
@@ -63,11 +51,16 @@ library(raster)
 library(plotly)
 ```
 
-```{r}
-defn <- function(text) {
+```{r helpers, echo = FALSE}
+defn_term <- function(term, text) {
+  term_node <- if (is.character(term)) tags$strong(term) else term
+
   tags$details(
     class = "defn-inline",
-    tags$summary(tags$strong(term)),
+    tags$summary(
+      term_node,
+      onclick = "event.stopPropagation();"
+    ),
     tags$div(class = "def-text", text)
   )
 }
@@ -80,72 +73,48 @@ Column {data-width=350}
 tags$div(
   style = "max-height: 65vh; overflow-y: auto; padding-right: 10px;",
 
-  selectInput(
-    inputId = "method",
-    label   = "Preprocessing Method",
-    choices = c(
-      "Raw" = "raw",
-      "Random Forest (Abate et al., 2019)" = "rf",
-      "XGBoost" = "xgb"
-    ),
-    selected = "xgb"
-  ),
-
+  selectInput(inputId = "method", label = "Preprocessing Method", 
+              choices = c("Raw" = "raw",
+                          "Random Forest (Abate et al., 2019)" = "rf",
+                          "XGBoost" = "xgb"), selected = "xgb"),
   tags$div(
   style = "margin-top: 10px; margin-bottom: 6px; color: #666; font-style: italic;",
-  "Click a term to show its definition. Click again to hide it."
-),
+  "Click a term to show its definition. Click again to hide it."),
   
-  radioButtons(
-    inputId = "layer",
-    label = "Display Layer",
-    choiceNames = list(
-      defn_term("Digital Surface Model (DSM)",
-        "Digital surface models are elevation surfaces that include ground, vegetation, and structures."
-        ),
-      defn_term("Digital Terrain Model (DTM)",
-        "Digital terrain models are bare-earth elevation surfaces after vegetation removal."
-      ),
-      defn_term("Canopy Height Model (CHM)",
-        "Canopy height models are calculated as DSM minus DTM and highlight vegetation height above the ground.")
-      )
-    ),
-    choiceValues = c("dsm", "dtm", "chm"),
-    selected = "dsm"
-  ),
-
+  radioButtons(inputId = "layer",
+               label = "Display Layer",
+               choiceNames = list(
+                 defn_term("Digital Surface Model (DSM)",
+                           "Digital surface models are elevation surfaces that include ground, vegetation, and structures."),
+                 defn_term("Digital Terrain Model (DTM)",
+                           "Digital terrain models are bare-earth elevation surfaces after vegetation removal."),
+                 defn_term("Canopy Height Model (CHM)",
+                           "Canopy height models are calculated as DSM minus DTM and highlight vegetation height above the ground.")),
+               choiceValues = c("dsm", "dtm", "chm"),
+               selected = "dsm"),
+  
   tags$div(
     style = "margin-top: 18px;",
     tags$div(tags$strong("Optional modifications")),
     tags$div(style = "height: 8px;"),
 
     # Confidence intervals
-    conditionalPanel(
-      condition = "input.method == 'xgb'",
+    conditionalPanel(condition = "input.method == 'xgb'",
       checkboxGroupInput(
-        inputId = "mods",
-        label = NULL,
+        inputId = "mods", label = NULL,
         choiceNames = list(
           defn_term("Model confidence",
-            HTML("Confidence is red, where &lt; 0.60, yellow 0.60–0.80, and green where ≥ 0.80.")
-                ))
-          )
-        ),
+            HTML("Confidence is red, where &lt; 0.60, yellow 0.60–0.80, and green where ≥ 0.80."))),
         choiceValues = c("conf"),
-        selected = character(0)
-      )
-    ),
+        selected = character(0))),
 
     # Viewshed check box
     checkboxGroupInput(
       inputId = "mods_vis",
       label = NULL,
       choiceNames = list(
-        tags$div(
-          tags$div(tags$strong("Viewsheds")),
-          defn("Viewsheds are visibility rasters computed from the DTM for a selected observer location. Black cells indicate terrain predicted to be visible.")
-        )
-      ),
+        defn_term("Viewsheds",
+        "Viewsheds are visibility rasters computed from the DTM for a selected observer location. Black cells indicate terrain predicted to be visible.")),
       choiceValues = c("vis"),
       selected = character(0)
     ),
@@ -156,7 +125,9 @@ tags$div(
       tags$div(
         style = "margin-top: 10px;",
         tags$div(tags$strong("Visibility viewpoint")),
-        defn("Viewpoints are predefined locations on the site used as the observer position for the viewshed calculation."),
+        defn_term(
+          tags$em("What is this?"),
+        "Viewpoints are predefined locations on the site used as the observer position for the viewshed calculation."),
         selectizeInput(
           inputId  = "vp",
           label = NULL,
@@ -167,10 +138,11 @@ tags$div(
           ),
           selected = "central_cluster",
           options  = list(dropdownParent = "body")
+          )
+        )
       )
     )
   )
-)
 ```
 
 
